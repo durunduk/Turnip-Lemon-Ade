@@ -1909,6 +1909,12 @@ tu_physical_device_init(struct tu_physical_device *device,
 
    device->vk.supported_sync_types = device->sync_types;
 
+   /* Qualcomm gralloc reads this from AIDL BufferUsage's VENDOR_MASK (bits
+    * 28-31) as "allocate UBWC-compressed". Confirmed on a840: every buffer
+    * carrying it is reported compressed and is sized with a metadata plane.
+    */
+   device->vk.ahb_vendor_usage_compressed = 0x10000000ull;
+
    device->queue_families[device->num_queue_families++] =
       (struct tu_queue_family) {
          .type = TU_QUEUE_GFX,

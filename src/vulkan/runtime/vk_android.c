@@ -1311,8 +1311,26 @@ vk_android_get_ahb_image_properties(
 
    ahb_usage_props =
       vk_find_struct(props->pNext, ANDROID_HARDWARE_BUFFER_USAGE_ANDROID);
-   if (ahb_usage_props)
-      ahb_usage_props->androidHardwareBufferUsage = ahb_usage;
+   if (ahb_usage_props) {
+      /* WN-Turnip: reaching here means the caller chained
+       * VkAndroidHardwareBufferUsageANDROID on the output, i.e. it is asking
+       * what to ALLOCATE with - the Android loader sizing up a swapchain
+       * buffer. Import-validation paths never chain it, so they keep the
+       * unmodified requirement and can still accept linear buffers.
+       *
+       * Skipped when CPU access is implied: gralloc cannot hand back a
+       * CPU-mappable compressed buffer. That guard also covers an explicit
+       * VK_IMAGE_COMPRESSION_DISABLED_EXT, which vk_image_info_to_ahb_usage()
+       * expresses by adding CPU_WRITE_RARELY.
+       */
+      uint64_t wn_ahb_usage = ahb_usage;
+
+      if (!(wn_ahb_usage & (AHARDWAREBUFFER_USAGE_CPU_READ_MASK |
+                            AHARDWAREBUFFER_USAGE_CPU_WRITE_MASK)))
+         wn_ahb_usage |= pdevice->ahb_vendor_usage_compressed;
+
+      ahb_usage_props->androidHardwareBufferUsage = wn_ahb_usage;
+   }
 
    return VK_SUCCESS;
 }
